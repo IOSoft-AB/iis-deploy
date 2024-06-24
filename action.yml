@@ -1,5 +1,5 @@
-name: 'IIS Deploy'
-description: 'Allows to deploy a website on IIS'
+name: "IIS Deploy"
+description: "Allows to deploy a website on IIS"
 inputs:
   website-name:
     description: "IIS website name"
@@ -25,7 +25,7 @@ runs:
         ${{ github.action_path }}/scripts/PublishAspNet5Website.ps1
         ${{ inputs.source-path }}
         ${{ inputs.msdeploy-service-url }}
-        ${{ inputs.website-name }}
+        "${{ inputs.website-name }}"
         ${{ inputs.msdeploy-username }}
         ${{ inputs.msdeploy-password }}
 branding:
