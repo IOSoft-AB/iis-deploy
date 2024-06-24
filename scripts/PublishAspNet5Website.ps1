@@ -27,6 +27,7 @@ $publishProperties = @{'WebPublishMethod' = 'MSDeploy';
 	'Password'                               = $deployUserPassword;
 	'SkipExtraFilesOnServer'                 = $false;
 	'EnableMSDeployAppOffline'               = $true;
+	'AllowUntrustedCertificate'              = $true;
 	'ExcludeFiles'                           = @(
 		@{'objectname' = 'filePath'; 'absolutepath' = '.*google.*\.html' },
 		@{'objectname' = 'filePath'; 'absolutepath' = '.*BingSiteAuth\.xml' },

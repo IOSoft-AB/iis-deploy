@@ -12,46 +12,46 @@ prefix and the names below. For example:
 #>
 $global:AspNetPublishSettings = New-Object -TypeName PSCustomObject @{
     MsdeployDefaultProperties = @{
-        'MSDeployUseChecksum'=$false
-        'SkipExtraFilesOnServer'=$true
-        'retryAttempts' = 20
-        'EnableMSDeployBackup' = $false
-        'DeleteExistingFiles' = $false
-        'AllowUntrustedCertificate'= $false
-        'MSDeployPackageContentFoldername'='website\'
-        'EnvironmentName' = 'Production'
-        'AuthType'='Basic'
-        'MSDeployPublishMethod'='WMSVC'
+        'MSDeployUseChecksum'              = $false
+        'SkipExtraFilesOnServer'           = $true
+        'retryAttempts'                    = 20
+        'EnableMSDeployBackup'             = $false
+        'DeleteExistingFiles'              = $false
+        'AllowUntrustedCertificate'        = $false
+        'MSDeployPackageContentFoldername' = 'website\'
+        'EnvironmentName'                  = 'Production'
+        'AuthType'                         = 'Basic'
+        'MSDeployPublishMethod'            = 'WMSVC'
     }
 }
 
-function InternalOverrideSettingsFromEnv{
+function InternalOverrideSettingsFromEnv {
     [cmdletbinding()]
     param(
-        [Parameter(Position=0)]
-        [object[]]$settings = ($global:AspNetPublishSettings,$global:AspNetPublishSettings.MsdeployDefaultProperties),
+        [Parameter(Position = 0)]
+        [object[]]$settings = ($global:AspNetPublishSettings, $global:AspNetPublishSettings.MsdeployDefaultProperties),
 
-        [Parameter(Position=1)]
+        [Parameter(Position = 1)]
         [string]$prefix = 'Publish'
     )
-    process{
-        foreach($settingsObj in $settings){
-            if($settingsObj -eq $null){
+    process {
+        foreach ($settingsObj in $settings) {
+            if ($settingsObj -eq $null) {
                 continue
             }
 
             $settingNames = $null
-            if($settingsObj -is [hashtable]){
+            if ($settingsObj -is [hashtable]) {
                 $settingNames = $settingsObj.Keys
             }
-            else{
+            else {
                 $settingNames = ($settingsObj | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name)
 
             }
 
-            foreach($name in @($settingNames)){
-                $fullname = ('{0}{1}' -f $prefix,$name)
-                if(Test-Path "env:$fullname"){
+            foreach ($name in @($settingNames)) {
+                $fullname = ('{0}{1}' -f $prefix, $name)
+                if (Test-Path "env:$fullname") {
                     $settingsObj.$name = ((get-childitem "env:$fullname").Value)
                 }
             }
@@ -59,38 +59,38 @@ function InternalOverrideSettingsFromEnv{
     }
 }
 
-InternalOverrideSettingsFromEnv -prefix 'Publish' -settings $global:AspNetPublishSettings,$global:AspNetPublishSettings.MsdeployDefaultProperties
+InternalOverrideSettingsFromEnv -prefix 'Publish' -settings $global:AspNetPublishSettings, $global:AspNetPublishSettings.MsdeployDefaultProperties
 
-function Register-AspnetPublishHandler{
+function Register-AspnetPublishHandler {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         $name,
-        [Parameter(Mandatory=$true,Position=1)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [ScriptBlock]$handler,
         [switch]$force
     )
-    process{        
-        if(!($script:AspNetPublishHandlers[$name]) -or $force ){
+    process {        
+        if (!($script:AspNetPublishHandlers[$name]) -or $force ) {
             'Adding handler for [{0}]' -f $name | Write-Verbose
             $script:AspNetPublishHandlers[$name] = $handler
         }
-        elseif(!($force)){
+        elseif (!($force)) {
             'Ignoring call to Register-AspnetPublishHandler for [name={0}], because a handler with that name exists and -force was not passed.' -f $name | Write-Verbose
         }
     }
 }
 
-function Get-AspnetPublishHandler{
+function Get-AspnetPublishHandler {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         $name
     )
-    process{
+    process {
         $foundHandler = $script:AspNetPublishHandlers[$name]
 
-        if(!$foundHandler){
+        if (!$foundHandler) {
             throw ('AspnetPublishHandler with name "{0}" was not found' -f $name)
         }
 
@@ -98,18 +98,18 @@ function Get-AspnetPublishHandler{
     }
 }
 
-function GetInternal-ExcludeFilesArg{
+function GetInternal-ExcludeFilesArg {
     [cmdletbinding()]
     param(
         $publishProperties
     )
-    process{
+    process {
         $excludeFiles = $publishProperties['ExcludeFiles']
-        foreach($exclude in $excludeFiles){
-            if($exclude){
+        foreach ($exclude in $excludeFiles) {
+            if ($exclude) {
                 [string]$objName = $exclude['objectname']
 
-                if([string]::IsNullOrEmpty($objName)){
+                if ([string]::IsNullOrEmpty($objName)) {
                     $objName = 'filePath'
                 }
 
@@ -122,30 +122,30 @@ function GetInternal-ExcludeFilesArg{
     }
 }
 
-function GetInternal-ReplacementsMSDeployArgs{
+function GetInternal-ReplacementsMSDeployArgs {
     [cmdletbinding()]
     param(
         $publishProperties
     )
-    process{
-        foreach($replace in ($publishProperties['Replacements'])){     
-            if($replace){           
+    process {
+        foreach ($replace in ($publishProperties['Replacements'])) {     
+            if ($replace) {           
                 $typeValue = $replace['type']
-                if(!$typeValue){ $typeValue = 'TextFile' }
+                if (!$typeValue) { $typeValue = 'TextFile' }
                 
                 $file = $replace['file']
                 $match = $replace['match']
                 $newValue = $replace['newValue']
 
-                if($file -and $match -and $newValue){
-                    $setParam = ('-setParam:type={0},scope={1},match={2},value={3}' -f $typeValue,$file, $match,$newValue)
+                if ($file -and $match -and $newValue) {
+                    $setParam = ('-setParam:type={0},scope={1},match={2},value={3}' -f $typeValue, $file, $match, $newValue)
                     'Adding setparam [{0}]' -f $setParam | Write-Verbose
 
                     # return it
                     $setParam
                 }
-                else{
-                    'Skipping replacement because its missing a required value.[file="{0}",match="{1}",newValue="{2}"]' -f $file,$match,$newValue | Write-Verbose
+                else {
+                    'Skipping replacement because its missing a required value.[file="{0}",match="{1}",newValue="{2}"]' -f $file, $match, $newValue | Write-Verbose
                 }
             }
         }       
@@ -158,63 +158,63 @@ Returns an array of msdeploy arguments that are used across different providers.
 For example this will handle useChecksum, AppOffline etc.
 This will also add default properties if they are missing.
 #>
-function GetInternal-SharedMSDeployParametersFrom{
+function GetInternal-SharedMSDeployParametersFrom {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [HashTable]$publishProperties,
-        [Parameter(Mandatory=$true,Position=1)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [System.IO.FileInfo]$packOutput
     )
-    process{
+    process {
         $sharedArgs = New-Object psobject -Property @{
-            ExtraArgs = @()
-            DestFragment = ''
+            ExtraArgs       = @('-verbose')
+            DestFragment    = ''
             EFMigrationData = @{}
         }
 
         # add default properties if they are missing
-        foreach($propName in $global:AspNetPublishSettings.MsdeployDefaultProperties.Keys){
-            if($publishProperties["$propName"] -eq $null){
+        foreach ($propName in $global:AspNetPublishSettings.MsdeployDefaultProperties.Keys) {
+            if ($publishProperties["$propName"] -eq $null) {
                 $defValue = $global:AspNetPublishSettings.MsdeployDefaultProperties["$propName"]
-                'Adding default property to publishProperties ["{0}"="{1}"]' -f $propName,$defValue | Write-Verbose
+                'Adding default property to publishProperties ["{0}"="{1}"]' -f $propName, $defValue | Write-Verbose
                 $publishProperties["$propName"] = $defValue
             }
         }
 
-        if($publishProperties['MSDeployUseChecksum'] -eq $true){
+        if ($publishProperties['MSDeployUseChecksum'] -eq $true) {
             $sharedArgs.ExtraArgs += '-usechecksum'
         }
 
-        if($publishProperties['EnableMSDeployAppOffline'] -eq $true){
+        if ($publishProperties['EnableMSDeployAppOffline'] -eq $true) {
             $sharedArgs.ExtraArgs += '-enablerule:AppOffline'
         }
 
-        if($publishProperties['WebPublishMethod'] -eq 'MSDeploy'){           
-            if($publishProperties['SkipExtraFilesOnServer'] -eq $true){
+        if ($publishProperties['WebPublishMethod'] -eq 'MSDeploy') {           
+            if ($publishProperties['SkipExtraFilesOnServer'] -eq $true) {
                 $sharedArgs.ExtraArgs += '-enableRule:DoNotDeleteRule'
             }
         }
 
-        if($publishProperties['WebPublishMethod'] -eq 'FileSystem'){
-            if($publishProperties['DeleteExistingFiles'] -eq $false){
+        if ($publishProperties['WebPublishMethod'] -eq 'FileSystem') {
+            if ($publishProperties['DeleteExistingFiles'] -eq $false) {
                 $sharedArgs.ExtraArgs += '-enableRule:DoNotDeleteRule'
             }
         }
 
-        if($publishProperties['retryAttempts']){
+        if ($publishProperties['retryAttempts']) {
             $sharedArgs.ExtraArgs += ('-retryAttempts:{0}' -f ([int]$publishProperties['retryAttempts']))
         }
 
-        if($publishProperties['EncryptWebConfig'] -eq $true){
+        if ($publishProperties['EncryptWebConfig'] -eq $true) {
             $sharedArgs.ExtraArgs += '-EnableRule:EncryptWebConfig'
         }
 
-        if($publishProperties['EnableMSDeployBackup'] -eq $false){
+        if ($publishProperties['EnableMSDeployBackup'] -eq $false) {
             $sharedArgs.ExtraArgs += '-disablerule:BackupRule'
         }
 
-        if($publishProperties['AllowUntrustedCertificate'] -eq $true){
+        if ($publishProperties['AllowUntrustedCertificate'] -eq $true) {
             $sharedArgs.ExtraArgs += '-allowUntrusted'
         }
 
@@ -224,17 +224,17 @@ function GetInternal-SharedMSDeployParametersFrom{
         $sharedArgs.ExtraArgs += (GetInternal-ReplacementsMSDeployArgs -publishProperties $publishProperties)
 
         # add EF Migration
-        if (($publishProperties['EfMigrations'] -ne $null) -and $publishProperties['EfMigrations'].Count -gt 0){
+        if (($publishProperties['EfMigrations'] -ne $null) -and $publishProperties['EfMigrations'].Count -gt 0) {
             if (!(Test-Path -Path $publishProperties['ProjectPath'])) {
                 throw 'ProjectPath property needs to be defined in the pubxml for EF migration.'
             }
             try {
                 # generate T-SQL files
                 $EFSqlFiles = GenerateInternal-EFMigrationScripts -projectPath $publishProperties['ProjectPath'] -packOutput $packOutput -EFMigrations $publishProperties['EfMigrations']
-                $sharedArgs.EFMigrationData.Add('EFSqlFiles',$EFSqlFiles)
+                $sharedArgs.EFMigrationData.Add('EFSqlFiles', $EFSqlFiles)
             }
             catch {
-                throw ('An error occurred while generating EF migrations. {0} {1}' -f $_.Exception,(Get-PSCallStack))
+                throw ('An error occurred while generating EF migrations. {0} {1}' -f $_.Exception, (Get-PSCallStack))
             }
         }
         # add connection string update
@@ -244,11 +244,11 @@ function GetInternal-SharedMSDeployParametersFrom{
                 GenerateInternal-AppSettingsFile -packOutput $packOutput -environmentName $publishProperties['EnvironmentName'] -connectionStrings $publishProperties['DestinationConnectionStrings']
             }
             catch {
-                throw ('An error occurred while generating the publish appsettings file. {0} {1}' -f $_.Exception,(Get-PSCallStack))
+                throw ('An error occurred while generating the publish appsettings file. {0} {1}' -f $_.Exception, (Get-PSCallStack))
             }
         }
 
-        if(-not [string]::IsNullOrWhiteSpace($publishProperties['ProjectGuid'])) {
+        if (-not [string]::IsNullOrWhiteSpace($publishProperties['ProjectGuid'])) {
             AddInternal-ProjectGuidToWebConfig -publishProperties $publishProperties -packOutput $packOutput
         }
 
@@ -324,34 +324,34 @@ Publish-AspNet -packOutput $packOutput -publishProperties @{
     'MSDeployUseChecksum'='true'
 }
 #>
-function Publish-AspNet{
+function Publish-AspNet {
     param(
-        [Parameter(Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         [hashtable]$publishProperties = @{},
 
-        [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
         [System.IO.FileInfo]$packOutput,
 
-        [Parameter(Position=2,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Position = 2, ValueFromPipelineByPropertyName = $true)]
         [System.IO.FileInfo]$pubProfilePath
     )
-    process{
-        if($publishProperties['WebPublishMethodOverride']){
-            'Overriding publish method from $publishProperties[''WebPublishMethodOverride''] to [{0}]' -f  ($publishProperties['WebPublishMethodOverride']) | Write-Verbose
+    process {
+        if ($publishProperties['WebPublishMethodOverride']) {
+            'Overriding publish method from $publishProperties[''WebPublishMethodOverride''] to [{0}]' -f ($publishProperties['WebPublishMethodOverride']) | Write-Verbose
             $publishProperties['WebPublishMethod'] = $publishProperties['WebPublishMethodOverride']
         }
 
-        if(-not [string]::IsNullOrWhiteSpace($pubProfilePath)){
+        if (-not [string]::IsNullOrWhiteSpace($pubProfilePath)) {
             $profileProperties = Get-PropertiesFromPublishProfile -filepath $pubProfilePath
-            foreach($key in $profileProperties.Keys){
-                if(-not ($publishProperties.ContainsKey($key))){
-                    'Adding properties from publish profile [''{0}''=''{1}'']' -f $key,$profileProperties[$key] | Write-Verbose
-                    $publishProperties.Add($key,$profileProperties[$key])
+            foreach ($key in $profileProperties.Keys) {
+                if (-not ($publishProperties.ContainsKey($key))) {
+                    'Adding properties from publish profile [''{0}''=''{1}'']' -f $key, $profileProperties[$key] | Write-Verbose
+                    $publishProperties.Add($key, $profileProperties[$key])
                 }
             }
         }
 
-        if(!([System.IO.Path]::IsPathRooted($packOutput))){
+        if (!([System.IO.Path]::IsPathRooted($packOutput))) {
             $packOutput = [System.IO.Path]::GetFullPath((Join-Path $pwd $packOutput))
         }
 
@@ -393,9 +393,9 @@ Example of $providerDataArray:
 function AddInternal-ProviderDataToManifest {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true, Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [XML]$xmlDocument,
-        [Parameter(Position=1)]
+        [Parameter(Position = 1)]
         [System.Collections.ArrayList]$providerDataArray
     )
     process {
@@ -419,9 +419,9 @@ function AddInternal-ProviderDataToManifest {
 function AddInternal-ProjectGuidToWebConfig {
     [cmdletbinding()]
     param(
-        [Parameter(Position=0)]
+        [Parameter(Position = 0)]
         [HashTable]$publishProperties,
-        [Parameter(Position=1)]
+        [Parameter(Position = 1)]
         [System.IO.FileInfo]$packOutput
     )
     process {
@@ -432,17 +432,17 @@ function AddInternal-ProjectGuidToWebConfig {
             $xDoc = [System.Xml.Linq.XDocument]::Load($webConfigPath)
             $allNodes = $xDoc.DescendantNodes() 
             $projectGuidComment = $allNodes | Where-Object { $_.NodeType -eq [System.Xml.XmlNodeType]::Comment -and $_.Value -eq $projectGuidCommentValue } | Select -First 1    
-            if($projectGuidComment -ne $null) {
-                if($publishProperties['IgnoreProjectGuid'] -eq $true) {
-                   $projectGuidComment.Remove() | Out-Null
-                   $xDoc.Save($webConfigPath) | Out-Null
+            if ($projectGuidComment -ne $null) {
+                if ($publishProperties['IgnoreProjectGuid'] -eq $true) {
+                    $projectGuidComment.Remove() | Out-Null
+                    $xDoc.Save($webConfigPath) | Out-Null
                 }
             }
             else {
-                if(-not ($publishProperties['IgnoreProjectGuid'] -eq $true)) {
-                   $projectGuidComment = New-Object -TypeName System.Xml.Linq.XComment -ArgumentList $projectGuidCommentValue
-                   $xDoc.LastNode.AddAfterSelf($projectGuidComment) | Out-Null
-                   $xDoc.Save($webConfigPath) | Out-Null
+                if (-not ($publishProperties['IgnoreProjectGuid'] -eq $true)) {
+                    $projectGuidComment = New-Object -TypeName System.Xml.Linq.XComment -ArgumentList $projectGuidCommentValue
+                    $xDoc.LastNode.AddAfterSelf($projectGuidComment) | Out-Null
+                    $xDoc.Save($webConfigPath) | Out-Null
                 }
             }
         }
@@ -462,24 +462,23 @@ Example of $EFMigrations:
 function GenerateInternal-EFMigrationScripts {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [System.IO.FileInfo]$projectPath,
-        [Parameter(Mandatory=$true,Position=1)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [System.IO.FileInfo]$packOutput,
-        [Parameter(Position=2)]
+        [Parameter(Position = 2)]
         [HashTable]$EFMigrations
     )
     process {          
         $files = @{}
         $dotnetExePath = GetInternal-DotNetExePath
         foreach ($dbContextName in $EFMigrations.Keys) {
-            try 
-            {
+            try {
                 $tempDir = GetInternal-PublishTempPath -packOutput $packOutput
                 $efScriptFile = Join-Path $tempDir ('{0}.sql' -f $dbContextName)
                 $arg = ('ef migrations script --idempotent --output {0} --context {1}' -f
-                                       $efScriptFile,
-                                       $dbContextName)
+                    $efScriptFile,
+                    $dbContextName)
 
                 Execute-Command $dotnetExePath $arg $projectPath | Out-Null
                 if (Test-Path -Path $efScriptFile) {
@@ -488,8 +487,7 @@ function GenerateInternal-EFMigrationScripts {
                     }
                 }            
             }
-            catch
-            {
+            catch {
                 throw 'error occured when executing dotnet.exe to generate EF T-SQL file'
             }
         }
@@ -508,11 +506,11 @@ Example of $connectionStrings:
 function GenerateInternal-AppSettingsFile {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory = $true,Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [System.IO.FileInfo]$packOutput,
-        [Parameter(Mandatory = $true,Position=1)]
+        [Parameter(Mandatory = $true, Position = 1)]
         [string]$environmentName,
-        [Parameter(Position=2)]
+        [Parameter(Position = 2)]
         [HashTable]$connectionStrings
     )
     process {    
@@ -523,7 +521,7 @@ function GenerateInternal-AppSettingsFile {
             throw ('The path of {0} is empty' -f $configProdJsonFilePath)
         }
         
-        if(!(Test-Path -Path $configProdJsonFilePath)) {
+        if (!(Test-Path -Path $configProdJsonFilePath)) {
             # create new file
             '{}' | out-file -encoding utf8 -filePath $configProdJsonFilePath -Force
         }
@@ -591,17 +589,17 @@ Example of $providerDataArray:
 function GenerateInternal-ManifestFile {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [System.IO.FileInfo]$packOutput,
-        [Parameter(Mandatory=$true,Position=1)]
+        [Parameter(Mandatory = $true, Position = 1)]
         $publishProperties,
-        [Parameter(Mandatory=$true,Position=2)]
+        [Parameter(Mandatory = $true, Position = 2)]
         [System.Collections.ArrayList]$providerDataArray,
-        [Parameter(Mandatory=$true,Position=3)]
+        [Parameter(Mandatory = $true, Position = 3)]
         [ValidateNotNull()]
         $manifestFileName
     )
-    process{
+    process {
         $xmlDocument = [xml]'<?xml version="1.0" encoding="utf-8"?><sitemanifest></sitemanifest>'
         AddInternal-ProviderDataToManifest -xmlDocument $xmlDocument -providerDataArray $providerDataArray | Out-Null
         $publishTempDir = GetInternal-PublishTempPath -packOutput $packOutput
@@ -616,13 +614,13 @@ function GenerateInternal-ManifestFile {
 function GetInternal-PublishTempPath {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true, Position=0)]
+        [Parameter(Mandatory = $true, Position = 0)]
         [System.IO.FileInfo]$packOutput
     )
     process {
         $tempDir = [io.path]::GetTempPath()
         $packOutputFolderName = Split-Path $packOutput -Leaf
-        $publishTempDir = [io.path]::combine($tempDir,'PublishTemp','obj',$packOutputFolderName)
+        $publishTempDir = [io.path]::combine($tempDir, 'PublishTemp', 'obj', $packOutputFolderName)
         if (!(Test-Path -Path $publishTempDir)) {
             New-Item -Path $publishTempDir -type directory | Out-Null
         }
@@ -631,15 +629,15 @@ function GetInternal-PublishTempPath {
     }
 }
 
-function Publish-AspNetMSDeploy{
+function Publish-AspNetMSDeploy {
     param(
-        [Parameter(Mandatory = $true,Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         $publishProperties,
-        [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
         $packOutput
     )
-    process{
-        if($publishProperties){
+    process {
+        if ($publishProperties) {
             $publishPwd = $publishProperties['Password']
             
             $sharedArgs = GetInternal-SharedMSDeployParametersFrom -publishProperties $publishProperties -packOutput $packOutput
@@ -656,13 +654,13 @@ function Publish-AspNetMSDeploy{
             # </sitemanifest>
 
             [System.Collections.ArrayList]$providerDataArray = @()
-            $iisAppValues = @{"path"=$packOutput};
-            $iisAppSourceKeyValue=@{"iisApp" = $iisAppValues}
+            $iisAppValues = @{"path" = $packOutput };
+            $iisAppSourceKeyValue = @{"iisApp" = $iisAppValues }
             $providerDataArray.Add($iisAppSourceKeyValue) | Out-Null
 
             if ($sharedArgs.EFMigrationData -ne $null -and $sharedArgs.EFMigrationData.Contains('EFSqlFiles')) { 
                 foreach ($sqlFile in $sharedArgs.EFMigrationData['EFSqlFiles'].Values) { 
-                    $dbFullSqlSourceKeyValue=@{"dbFullSql" = @{"path"=$sqlFile}}
+                    $dbFullSqlSourceKeyValue = @{"dbFullSql" = @{"path" = $sqlFile } }
                     $providerDataArray.Add($dbFullSqlSourceKeyValue) | Out-Null       
                 }
             }
@@ -679,17 +677,17 @@ function Publish-AspNetMSDeploy{
             # <dbFullSql path="Data Source=tcp:webapplicationdbserver.database.windows.net,1433;Initial Catalog=WebApplication_db;User Id=sqladmin@webapplicationdbserver;Password=<password>" />
             # </sitemanifest>
 
-            $iisAppValues = @{"path"=$iisAppPath};
-            if(-not [string]::IsNullOrWhiteSpace($publishProperties['AppOfflineTemplate'])){
+            $iisAppValues = @{"path" = $iisAppPath };
+            if (-not [string]::IsNullOrWhiteSpace($publishProperties['AppOfflineTemplate'])) {
                 $iisAppValues.Add("appOfflineTemplate", $publishProperties['AppOfflineTemplate']) | Out-Null
             }
 
-            $iisAppDestinationKeyValue=@{"iisApp" = $iisAppValues}
+            $iisAppDestinationKeyValue = @{"iisApp" = $iisAppValues }
             $providerDataArray.Add($iisAppDestinationKeyValue) | Out-Null
 
             if ($publishProperties['EfMigrations'] -ne $null -and $publishProperties['EfMigrations'].Count -gt 0) { 
                 foreach ($connectionString in $publishProperties['EfMigrations'].Values) { 
-                    $dbFullSqlDestinationKeyValue=@{"dbFullSql" = @{"path"=$connectionString}}
+                    $dbFullSqlDestinationKeyValue = @{"dbFullSql" = @{"path" = $connectionString } }
                     $providerDataArray.Add($dbFullSqlDestinationKeyValue) | Out-Null       
                 }
             }
@@ -706,74 +704,74 @@ function Publish-AspNetMSDeploy{
                 -retryAttempts=2"
             #>
 
-            if(-not [string]::IsNullOrWhiteSpace($publishProperties['MSDeployPublishMethod'])){
+            if (-not [string]::IsNullOrWhiteSpace($publishProperties['MSDeployPublishMethod'])) {
                 $serviceMethod = $publishProperties['MSDeployPublishMethod']
             }
             
-            $msdeployComputerName= InternalNormalize-MSDeployUrl -serviceUrl $publishProperties['MSDeployServiceURL'] -siteName $iisAppPath -serviceMethod $publishProperties['MSDeployPublishMethod']
-            if($publishProperties['UseMSDeployServiceURLAsIs'] -eq $true){
-               $msdeployComputerName = $publishProperties['MSDeployServiceURL']
+            $msdeployComputerName = InternalNormalize-MSDeployUrl -serviceUrl $publishProperties['MSDeployServiceURL'] -siteName $iisAppPath -serviceMethod $publishProperties['MSDeployPublishMethod']
+            if ($publishProperties['UseMSDeployServiceURLAsIs'] -eq $true) {
+                $msdeployComputerName = $publishProperties['MSDeployServiceURL']
             }
 
             $publishArgs = @()
             #use manifest to publish
             $publishArgs += ('-source:manifest=''{0}''' -f $sourceXMLFile.FullName)
             $publishArgs += ('-dest:manifest=''{0}'',ComputerName=''{1}'',UserName=''{2}'',Password=''{3}'',IncludeAcls=''False'',AuthType=''{4}''{5}' -f 
-                                    $destXMLFile.FullName,
-                                    $msdeployComputerName,
-                                    $publishProperties['UserName'],
-                                    $publishPwd,
-                                    $publishProperties['AuthType'],
-                                    $sharedArgs.DestFragment)
+                $destXMLFile.FullName,
+                $msdeployComputerName,
+                $publishProperties['UserName'],
+                $publishPwd,
+                $publishProperties['AuthType'],
+                $sharedArgs.DestFragment)
             $publishArgs += '-verb:sync'
             $publishArgs += $sharedArgs.ExtraArgs
 
-            $command = '"{0}" {1}' -f (Get-MSDeploy),($publishArgs -join ' ')
+            $command = '"{0}" {1}' -f (Get-MSDeploy), ($publishArgs -join ' ')
             
             if (! [String]::IsNullOrEmpty($publishPwd)) {
-            $command.Replace($publishPwd,'{PASSWORD-REMOVED-FROM-LOG}') | Print-CommandString
+                $command.Replace($publishPwd, '{PASSWORD-REMOVED-FROM-LOG}') | Print-CommandString
             }
             Execute-Command -exePath (Get-MSDeploy) -arguments ($publishArgs -join ' ')
         }
-        else{
+        else {
             throw 'publishProperties is empty, cannot publish'
         }
     }
 }
 
-function Escape-TextForRegularExpressions{
+function Escape-TextForRegularExpressions {
     [cmdletbinding()]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]$text
     )
-    process{
+    process {
         [regex]::Escape($text)
     }
 }
 
-function Publish-AspNetMSDeployPackage{
+function Publish-AspNetMSDeployPackage {
     param(
-        [Parameter(Mandatory = $true,Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         $publishProperties,
-        [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
         $packOutput
     )
-    process{
-        if($publishProperties){
+    process {
+        if ($publishProperties) {
             $packageDestinationFilepath = $publishProperties['DesktopBuildPackageLocation']
 
-            if(!$packageDestinationFilepath){
+            if (!$packageDestinationFilepath) {
                 throw ('The package destination property (DesktopBuildPackageLocation) was not found in the publish properties')
             }
 
-            if(!([System.IO.Path]::IsPathRooted($packageDestinationFilepath))){
+            if (!([System.IO.Path]::IsPathRooted($packageDestinationFilepath))) {
                 $packageDestinationFilepath = [System.IO.Path]::GetFullPath((Join-Path $pwd $packageDestinationFilepath))
             }
 
             # if the dir doesn't exist create it
             $pkgDir = ((new-object -typename System.IO.FileInfo($packageDestinationFilepath)).Directory)
-            if(!(Test-Path -Path $pkgDir)) {
+            if (!(Test-Path -Path $pkgDir)) {
                 New-Item $pkgDir -type Directory | Out-Null
             }
 
@@ -797,7 +795,7 @@ function Publish-AspNetMSDeployPackage{
             # </sitemanifest>
 
             [System.Collections.ArrayList]$providerDataArray = @()
-            $iisAppSourceKeyValue=@{"iisApp" = @{"path"=$packOutput}}
+            $iisAppSourceKeyValue = @{"iisApp" = @{"path" = $packOutput } }
             $providerDataArray.Add($iisAppSourceKeyValue) | Out-Null
 
             [System.IO.FileInfo]$sourceXMLFile = GenerateInternal-ManifestFile -packOutput $packOutput -publishProperties $publishProperties -providerDataArray $providerDataArray -manifestFileName 'SourceManifest.xml' 
@@ -807,36 +805,36 @@ function Publish-AspNetMSDeployPackage{
             $publishArgs += ('-dest:package=''{0}''' -f $packageDestinationFilepath)
             $publishArgs += '-verb:sync'
             $packageContentFolder = $publishProperties['MSDeployPackageContentFoldername']
-            if(!$packageContentFolder){ $packageContentFolder = 'website' }
+            if (!$packageContentFolder) { $packageContentFolder = 'website' }
             $publishArgs += ('-replace:match=''{0}'',replace=''{1}''' -f (Escape-TextForRegularExpressions $packOutput), $packageContentFolder )
             $publishArgs += $sharedArgs.ExtraArgs
             
-            $command = '"{0}" {1}' -f (Get-MSDeploy),($publishArgs -join ' ')
+            $command = '"{0}" {1}' -f (Get-MSDeploy), ($publishArgs -join ' ')
             $command | Print-CommandString
             Execute-Command -exePath (Get-MSDeploy) -arguments ($publishArgs -join ' ')
         }
-        else{
+        else {
             throw 'publishProperties is empty, cannot publish'
         }
     }
 }
 
-function Publish-AspNetFileSystem{
+function Publish-AspNetFileSystem {
     param(
-        [Parameter(Mandatory = $true,Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         $publishProperties,
-        [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
         $packOutput
     )
-    process{
+    process {
         $pubOut = $publishProperties['publishUrl']
         
-        if([string]::IsNullOrWhiteSpace($pubOut)){
+        if ([string]::IsNullOrWhiteSpace($pubOut)) {
             throw ('publishUrl is a required property for FileSystem publish but it was empty.')
         }
 
         # if it's a relative path then update it to a full path
-        if(!([System.IO.Path]::IsPathRooted($pubOut))){
+        if (!([System.IO.Path]::IsPathRooted($pubOut))) {
             $pubOut = [System.IO.Path]::GetFullPath((Join-Path $pwd $pubOut))
             $publishProperties['publishUrl'] = "$pubOut"
         }
@@ -857,8 +855,8 @@ function Publish-AspNetFileSystem{
         # </sitemanifest>
 
         [System.Collections.ArrayList]$providerDataArray = @()
-        $contentPathValues = @{"path"=$packOutput};
-        $contentPathSourceKeyValue=@{"contentPath" = $contentPathValues}
+        $contentPathValues = @{"path" = $packOutput };
+        $contentPathSourceKeyValue = @{"contentPath" = $contentPathValues }
         $providerDataArray.Add($contentPathSourceKeyValue) | Out-Null
             
         [System.IO.FileInfo]$sourceXMLFile = GenerateInternal-ManifestFile -packOutput $packOutput -publishProperties $publishProperties -providerDataArray $providerDataArray -manifestFileName 'SourceManifest.xml'
@@ -870,11 +868,11 @@ function Publish-AspNetFileSystem{
         # <?xml version="1.0" encoding="utf-8"?>
         # <sitemanifest><contentPath path="C:\Temp\PublishTemp\WebApplicationDestination\" />
         # </sitemanifest>
-        $contentPathValues = @{"path"=$publishProperties['publishUrl']};
-        if(-not [string]::IsNullOrWhiteSpace($publishProperties['AppOfflineTemplate'])){
+        $contentPathValues = @{"path" = $publishProperties['publishUrl'] };
+        if (-not [string]::IsNullOrWhiteSpace($publishProperties['AppOfflineTemplate'])) {
             $contentPathValues.Add("appOfflineTemplate", $publishProperties['AppOfflineTemplate']) | Out-Null
         }
-        $contentPathDestinationKeyValue=@{"contentPath" = $contentPathValues}
+        $contentPathDestinationKeyValue = @{"contentPath" = $contentPathValues }
         $providerDataArray.Add($contentPathDestinationKeyValue) | Out-Null
 
         [System.IO.FileInfo]$destXMLFile = GenerateInternal-ManifestFile -packOutput $packOutput -publishProperties $publishProperties -providerDataArray $providerDataArray -manifestFileName 'DestinationManifest.xml'
@@ -885,7 +883,7 @@ function Publish-AspNetFileSystem{
         $publishArgs += '-verb:sync'
         $publishArgs += $sharedArgs.ExtraArgs
 
-        $command = '"{0}" {1}' -f (Get-MSDeploy),($publishArgs -join ' ')
+        $command = '"{0}" {1}' -f (Get-MSDeploy), ($publishArgs -join ' ')
         $command | Print-CommandString
         Execute-Command -exePath (Get-MSDeploy) -arguments ($publishArgs -join ' ')
         
@@ -915,51 +913,51 @@ function Publish-AspNetFileSystem{
 .EXAMPLE
     Get-PropertiesFromPublishProfile -filepath c:\projects\publish\devpublish.pubxml
 #>
-function Get-PropertiesFromPublishProfile{
+function Get-PropertiesFromPublishProfile {
     [cmdletbinding()]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [ValidateNotNull()]
-        [ValidateScript({Test-Path $_})]
+        [ValidateScript({ Test-Path $_ })]
         [System.IO.FileInfo]$filepath
     )
-    begin{
+    begin {
         Add-Type -AssemblyName System.Core
         Add-Type -AssemblyName Microsoft.Build
     }
-    process{
+    process {
         'Reading publish properties from profile [{0}]' -f $filepath | Write-Verbose
         # use MSBuild to get the project and read properties
         $projectCollection = (New-Object Microsoft.Build.Evaluation.ProjectCollection)
-        if(!([System.IO.Path]::IsPathRooted($filepath))){
+        if (!([System.IO.Path]::IsPathRooted($filepath))) {
             $filepath = [System.IO.Path]::GetFullPath((Join-Path $pwd $filepath))
         }
         $project = ([Microsoft.Build.Construction.ProjectRootElement]::Open([string]$filepath.Fullname, $projectCollection))
 
         $properties = @{}
-        foreach($property in $project.Properties){
-            $properties[$property.Name]=$property.Value
+        foreach ($property in $project.Properties) {
+            $properties[$property.Name] = $property.Value
         }
 
         $properties
     }
 }
 
-function Print-CommandString{
+function Print-CommandString {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
         $command
     )
-    process{
+    process {
         'Executing command [{0}]' -f $command | Write-Output
     }
 }
 
-function Execute-CommandString{
+function Execute-CommandString {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
         [string[]]$command,
         
         [switch]
@@ -968,15 +966,15 @@ function Execute-CommandString{
         [switch]
         $ignoreErrors
     )
-    process{
-        foreach($cmdToExec in $command){
+    process {
+        foreach ($cmdToExec in $command) {
             'Executing command [{0}]' -f $cmdToExec | Write-Verbose
-            if($useInvokeExpression){
+            if ($useInvokeExpression) {
                 try {
                     Invoke-Expression -Command $cmdToExec
                 }
                 catch {
-                    if(-not $ignoreErrors){
+                    if (-not $ignoreErrors) {
                         $msg = ('The command [{0}] exited with exception [{1}]' -f $cmdToExec, $_.ToString())
                         throw $msg
                     }
@@ -985,7 +983,7 @@ function Execute-CommandString{
             else {
                 cmd.exe /D /C $cmdToExec
 
-                if(-not $ignoreErrors -and ($LASTEXITCODE -ne 0)){
+                if (-not $ignoreErrors -and ($LASTEXITCODE -ne 0)) {
                     $msg = ('The command [{0}] exited with code [{1}]' -f $cmdToExec, $LASTEXITCODE)
                     throw $msg
                 }
@@ -997,33 +995,33 @@ function Execute-CommandString{
 function Execute-Command {
     [cmdletbinding()]
     param(
-        [Parameter(Mandatory = $true,Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         [String]$exePath,
-        [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+        [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
         [String]$arguments,
-        [Parameter(Position=2)]
+        [Parameter(Position = 2)]
         [System.IO.FileInfo]$workingDirectory
-        )
-    process{
+    )
+    process {
         $psi = New-Object -TypeName System.Diagnostics.ProcessStartInfo
         $psi.CreateNoWindow = $true
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
-        $psi.RedirectStandardError=$true
+        $psi.RedirectStandardError = $true
         $psi.FileName = $exePath
         $psi.Arguments = $arguments
-        if($workingDirectory -and (Test-Path -Path $workingDirectory)) {
+        if ($workingDirectory -and (Test-Path -Path $workingDirectory)) {
             $psi.WorkingDirectory = $workingDirectory
         }
 
         $process = New-Object -TypeName System.Diagnostics.Process
         $process.StartInfo = $psi
-        $process.EnableRaisingEvents=$true
+        $process.EnableRaisingEvents = $true
 
         # Register the event handler for error
         $stdErrEvent = Register-ObjectEvent -InputObject $process  -EventName 'ErrorDataReceived' -Action {
             if (! [String]::IsNullOrEmpty($EventArgs.Data)) {
-             $EventArgs.Data | Write-Error 
+                $EventArgs.Data | Write-Error 
             }
         }
 
@@ -1048,7 +1046,7 @@ function GetInternal-DotNetExePath {
             if ($env:DOTNET_HOME) {
                 $dotnetinstallpath = Join-Path $env:DOTNET_HOME -ChildPath 'dotnet.exe'
             }
-            elseif ($DotNetRegItem -and $DotNetRegItem.InstallDir){
+            elseif ($DotNetRegItem -and $DotNetRegItem.InstallDir) {
                 $dotnetinstallpath = Join-Path $DotNetRegItem.InstallDir -ChildPath 'dotnet.exe'
             }
         }
@@ -1060,27 +1058,27 @@ function GetInternal-DotNetExePath {
     }
 }
 
-function Get-MSDeploy{
+function Get-MSDeploy {
     [cmdletbinding()]
     param()
-    process{
+    process {
         $installPath = $env:msdeployinstallpath
 
-        if(!$installPath){
-            $keysToCheck = @('hklm:\SOFTWARE\Microsoft\IIS Extensions\MSDeploy\3','hklm:\SOFTWARE\Microsoft\IIS Extensions\MSDeploy\2','hklm:\SOFTWARE\Microsoft\IIS Extensions\MSDeploy\1')
+        if (!$installPath) {
+            $keysToCheck = @('hklm:\SOFTWARE\Microsoft\IIS Extensions\MSDeploy\3', 'hklm:\SOFTWARE\Microsoft\IIS Extensions\MSDeploy\2', 'hklm:\SOFTWARE\Microsoft\IIS Extensions\MSDeploy\1')
 
-            foreach($keyToCheck in $keysToCheck){
-                if(Test-Path $keyToCheck){
+            foreach ($keyToCheck in $keysToCheck) {
+                if (Test-Path $keyToCheck) {
                     $installPath = (Get-itemproperty $keyToCheck -Name InstallPath -ErrorAction SilentlyContinue | select -ExpandProperty InstallPath -ErrorAction SilentlyContinue)
                 }
 
-                if($installPath){
+                if ($installPath) {
                     break;
                 }
             }
         }
 
-        if(!$installPath){
+        if (!$installPath) {
             throw "Unable to find msdeploy.exe, please install it and try again"
         }
 
@@ -1092,18 +1090,18 @@ function Get-MSDeploy{
     }
 }
 
-function InternalNormalize-MSDeployUrl{
+function InternalNormalize-MSDeployUrl {
     [cmdletbinding()]
     param(
-        [Parameter(Position=0,Mandatory=$true)]
+        [Parameter(Position = 0, Mandatory = $true)]
         [string]$serviceUrl,
 
         [string] $siteName,
         
-        [ValidateSet('WMSVC','RemoteAgent','InProc')]
+        [ValidateSet('WMSVC', 'RemoteAgent', 'InProc')]
         [string]$serviceMethod = 'WMSVC'
     )
-    process{
+    process {
         $tempUrl = $serviceUrl
         $resultUrl = $serviceUrl
 
@@ -1111,36 +1109,35 @@ function InternalNormalize-MSDeployUrl{
         $httpStr = 'http://'
         $msdeployAxd = 'msdeploy.axd'
 
-        if(-not [string]::IsNullOrWhiteSpace($serviceUrl)){
-            if([string]::Compare($serviceMethod,'WMSVC',[StringComparison]::OrdinalIgnoreCase) -eq 0){
+        if (-not [string]::IsNullOrWhiteSpace($serviceUrl)) {
+            if ([string]::Compare($serviceMethod, 'WMSVC', [StringComparison]::OrdinalIgnoreCase) -eq 0) {
                 # if no http or https then add one
-                if(-not ($serviceUrl.StartsWith($httpStr,[StringComparison]::OrdinalIgnoreCase) -or 
-                            $serviceUrl.StartsWith($httpsStr,[StringComparison]::OrdinalIgnoreCase)) ){
+                if (-not ($serviceUrl.StartsWith($httpStr, [StringComparison]::OrdinalIgnoreCase) -or 
+                        $serviceUrl.StartsWith($httpsStr, [StringComparison]::OrdinalIgnoreCase)) ) {
 
-                    $serviceUrl = [string]::Concat($httpsStr,$serviceUrl.TrimStart())
+                    $serviceUrl = [string]::Concat($httpsStr, $serviceUrl.TrimStart())
                 }
                 [System.Uri]$serviceUri = New-Object -TypeName 'System.Uri' $serviceUrl
                 [System.UriBuilder]$serviceUriBuilder = New-Object -TypeName 'System.UriBuilder' $serviceUrl
 
                 # if it's https and the port was not passed in override it to 8172
-                if( ([string]::Compare('https',$serviceUriBuilder.Scheme,[StringComparison]::OrdinalIgnoreCase) -eq 0) -and
-                     -not $serviceUrl.Contains((':{0}' -f $serviceUriBuilder.Port)) ) {
+                if ( ([string]::Compare('https', $serviceUriBuilder.Scheme, [StringComparison]::OrdinalIgnoreCase) -eq 0) -and
+                    -not $serviceUrl.Contains((':{0}' -f $serviceUriBuilder.Port)) ) {
                     $serviceUriBuilder.Port = 8172
                 }
 
                 # if no path then add one
-                if([string]::Compare('/',$serviceUriBuilder.Path,[StringComparison]::OrdinalIgnoreCase) -eq 0){
+                if ([string]::Compare('/', $serviceUriBuilder.Path, [StringComparison]::OrdinalIgnoreCase) -eq 0) {
                     $serviceUriBuilder.Path = $msdeployAxd
                 }
                 
-                if ([string]::IsNullOrEmpty($serviceUriBuilder.Query) -and -not([string]::IsNullOrEmpty($siteName)))
-                {
+                if ([string]::IsNullOrEmpty($serviceUriBuilder.Query) -and -not([string]::IsNullOrEmpty($siteName))) {
                     $serviceUriBuilder.Query = "site=" + $siteName;
                 }
 
                 $resultUrl = $serviceUriBuilder.Uri.AbsoluteUri
             }
-            elseif([string]::Compare($serviceMethod,'RemoteAgent',[StringComparison]::OrdinalIgnoreCase) -eq 0){
+            elseif ([string]::Compare($serviceMethod, 'RemoteAgent', [StringComparison]::OrdinalIgnoreCase) -eq 0) {
                 [System.UriBuilder]$serviceUriBuilder = New-Object -TypeName 'System.UriBuilder' $serviceUrl
                 # http://{computername}/MSDEPLOYAGENTSERVICE
                 # remote agent must use http
@@ -1149,7 +1146,7 @@ function InternalNormalize-MSDeployUrl{
                 
                 $resultUrl = $serviceUriBuilder.Uri.AbsoluteUri
             }
-            else{
+            else {
                 # see if it's for localhost
                 [System.Uri]$serviceUri = New-Object -TypeName 'System.Uri' $serviceUrl
                 $resultUrl = $serviceUri.AbsoluteUri
@@ -1161,17 +1158,17 @@ function InternalNormalize-MSDeployUrl{
     }
 }
 
-function InternalRegister-AspNetKnownPublishHandlers{
+function InternalRegister-AspNetKnownPublishHandlers {
     [cmdletbinding()]
     param()
-    process{
+    process {
         'Registering MSDeploy handler' | Write-Verbose
         Register-AspnetPublishHandler -name 'MSDeploy' -force -handler {
             [cmdletbinding()]
             param(
-                [Parameter(Mandatory = $true,Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+                [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
                 $publishProperties,
-                [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+                [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
                 $packOutput
             )
 
@@ -1182,9 +1179,9 @@ function InternalRegister-AspNetKnownPublishHandlers{
         Register-AspnetPublishHandler -name 'Package' -force -handler {
             [cmdletbinding()]
             param(
-                [Parameter(Mandatory = $true,Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+                [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
                 $publishProperties,
-                [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+                [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
                 $packOutput
             )
 
@@ -1195,9 +1192,9 @@ function InternalRegister-AspNetKnownPublishHandlers{
         Register-AspnetPublishHandler -name 'FileSystem' -force -handler {
             [cmdletbinding()]
             param(
-                [Parameter(Mandatory = $true,Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+                [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
                 $publishProperties,
-                [Parameter(Mandatory = $true,Position=1,ValueFromPipelineByPropertyName=$true)]
+                [Parameter(Mandatory = $true, Position = 1, ValueFromPipelineByPropertyName = $true)]
                 $packOutput
             )
     
@@ -1210,17 +1207,17 @@ function InternalRegister-AspNetKnownPublishHandlers{
 .SYNOPSIS
     Used for testing purposes only.
 #>
-function InternalReset-AspNetPublishHandlers{
+function InternalReset-AspNetPublishHandlers {
     [cmdletbinding()]
     param()
-    process{
+    process {
         $script:AspNetPublishHandlers = @{}
         InternalRegister-AspNetKnownPublishHandlers
     }
 }
 
-Export-ModuleMember -function Get-*,Publish-*,Register-*,Enable-*
-if($env:IsDeveloperMachine){
+Export-ModuleMember -function Get-*, Publish-*, Register-*, Enable-*
+if ($env:IsDeveloperMachine) {
     # you can set the env var to expose all functions to importer. easy for development.
     # this is required for executing pester test cases, it's set by build.ps1
     Export-ModuleMember -function *
